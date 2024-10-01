@@ -119,7 +119,7 @@ class EnvRobosuite(EB.EnvBase):
         info["is_success"] = self.is_success()
         return obs, r, self.is_done(), info
 
-    def reset(self, unset_ep_meta=True):
+    def reset(self, unset_ep_meta=True, xml_string=None):
         """
         Reset environment.
 
@@ -133,7 +133,7 @@ class EnvRobosuite(EB.EnvBase):
             # unset the ep meta to clear out any ep meta that was previously set
             self.env.unset_ep_meta()
 
-        di = self.env.reset()
+        di = self.env.reset(xml_string=xml_string)
         
         # keep track of episode language and embedding
         if self.env_lang is not None:
@@ -166,6 +166,7 @@ class EnvRobosuite(EB.EnvBase):
             observation (dict): observation dictionary after setting the simulator state (only
                 if "states" is in @state)
         """
+        assert self._is_v1, "reset_to is only supported for robosuite v1.2+"
         should_ret = False
         if "model" in state:
             if state.get("ep_meta", None) is not None:
@@ -181,21 +182,11 @@ class EnvRobosuite(EB.EnvBase):
             # this reset is necessary.
             # while the call to env.reset_from_xml_string does call reset,
             # that is only a "soft" reset that doesn't actually reload the model.
-            self.reset(unset_ep_meta=False)
-            robosuite_version_id = int(robosuite.__version__.split(".")[1])
-            if robosuite_version_id <= 3:
-                from robosuite.utils.mjcf_utils import postprocess_model_xml
-                xml = postprocess_model_xml(state["model"])
-            else:
-                # v1.4 and above use the class-based edit_model_xml function
-                xml = self.env.edit_model_xml(state["model"])
+            xml = self.env.edit_model_xml(state["model"])
+            self.reset(unset_ep_meta=False, xml_string=xml)
 
             self.env.reset_from_xml_string(xml)
             self.env.sim.reset()
-            if not self._is_v1:
-                # hide teleop visualization after restoring from model
-                self.env.sim.model.site_rgba[self.env.eef_site_id] = np.array([0., 0., 0., 0.])
-                self.env.sim.model.site_rgba[self.env.eef_cylinder_id] = np.array([0., 0., 0., 0.])
         if "states" in state:
             self.env.sim.set_state_from_flattened(state["states"])
             self.env.sim.forward()
