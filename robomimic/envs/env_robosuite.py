@@ -424,7 +424,6 @@ class EnvRobosuite(EB.EnvBase):
         # note that @postprocess_visual_obs is False since this env's images will be written to a dataset
         return cls(
             env_name=env_name,
-            render=False, 
             render_offscreen=has_camera, 
             use_image_obs=has_camera, 
             postprocess_visual_obs=False,
