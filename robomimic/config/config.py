@@ -242,17 +242,17 @@ class Config(dict):
         del self[name]
 
     def to_dict(self):
-        base = {}
-        for key, value in self.items():
-            if isinstance(value, type(self)):
-                base[key] = value.to_dict()
-            elif isinstance(value, (list, tuple)):
-                base[key] = type(value)(
-                    item.to_dict() if isinstance(item, type(self)) else
-                    item for item in value)
+        def convert(item):
+            if isinstance(item, type(self)):
+                return {k: convert(v) for k, v in item.items()}
+            elif isinstance(item, dict):
+                return {k: convert(v) for k, v in item.items()}
+            elif isinstance(item, (list, tuple, set)):
+                return type(item)(convert(i) for i in item)
             else:
-                base[key] = value
-        return base
+                return item
+
+        return {key: convert(value) for key, value in self.items()}
 
     def copy(self):
         return copy.copy(self)
